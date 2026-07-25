@@ -1,0 +1,13 @@
+matplotlib
+
+numpy
+
+pandas
+
+scipy
+
+openpyxl
+
+scikit-learn
+
+jupyter
