@@ -544,3 +544,215 @@ class LeakageAnalysis:
         plt.close(fig)
 
         print("✓ leakage_effect_summary")
+
+    def generate_statistics_table(self):
+
+        df = self.stats.copy()
+
+        # -----------------------------
+        # Display names
+        # -----------------------------
+
+        df["Mode"] = (
+            df["mode"]
+            .map(self.MODE_NAMES)
+            .fillna(df["mode"])
+        )
+
+        df["Features"] = df["feature_set"]
+
+        df["Classifier"] = (
+            df["classifier"]
+            .map(self.CLASSIFIER_NAMES)
+            .fillna(df["classifier"])
+        )
+
+        # Comparison label
+
+        df["Comparison"] = (
+            df["cond_A"]
+            + " vs "
+            + df["cond_B"]
+        )
+
+        df["Adjusted $p$"] = (
+            df["p_bonf"]
+            .map(lambda x: f"{x:.4f}")
+        )
+
+        df["Cohen's $d$"] = (
+            df["cohens_d"]
+            .map(lambda x: f"{x:.3f}")
+        )
+
+        df["Significant"] = (
+            df["significant"]
+            .map(
+                {
+                    True: "Yes",
+                    False: "No"
+                }
+            )
+        )
+
+        summary = df[
+            [
+                "Mode",
+                "Features",
+                "Classifier",
+                "Comparison",
+                "Adjusted $p$",
+                "Cohen's $d$",
+                "Significant"
+            ]
+        ].copy()
+
+        mode_order = {
+            "Binary": 0,
+            "Multiclass": 1
+        }
+
+        feature_order = {
+            "B": 0,
+            "C": 1,
+            "D": 2,
+            "E": 3
+        }
+
+        classifier_order = {
+            "RF": 0,
+            "kNN": 1,
+            "MLP": 2,
+            "SVM-L": 3,
+            "SVM-P": 4,
+            "SVM-RBF": 5
+        }
+
+        summary["m"] = summary["Mode"].map(mode_order)
+
+        summary["f"] = summary["Features"].map(feature_order)
+
+        summary["c"] = summary["Classifier"].map(classifier_order)
+
+        summary = summary.sort_values(
+            [
+                "m",
+                "f",
+                "c"
+            ]
+        )
+
+        summary = summary.drop(
+            columns=[
+                "m",
+                "f",
+                "c"
+            ]
+        )
+
+        latex = summary.to_latex(
+
+            index=False,
+
+            escape=False,
+
+            column_format="lllclcc",
+
+            caption=(
+                "Statistical comparison between the "
+                "segment-wise and group-wise validation "
+                "protocols using the Wilcoxon signed-rank "
+                "test with Bonferroni correction."
+            ),
+
+            label="tab:leakage-statistics"
+
+        )
+
+        outfile = (
+            self.output_tables /
+            "leakage_statistics.tex"
+        )
+
+        outfile.write_text(
+            latex,
+            encoding="utf8"
+        )
+
+        print(
+            "✓ leakage_statistics.tex generated"
+        )
+
+        return summary
+
+    # --------------------------------------------------------
+
+    def generate_significant_statistics_table(self):
+
+        summary = self.generate_statistics_table()
+
+        significant = summary[
+            summary["Significant"] == "Yes"
+        ].copy()
+
+        significant = significant.drop(
+            columns=["Significant"]
+        )
+
+        significant = significant[
+            [
+                "Mode",
+                "Features",
+                "Classifier",
+                "Adjusted $p$",
+                "Cohen's $d$"
+            ]
+        ]
+
+        significant["Cohen's $d$"] = (
+            significant["Cohen's $d$"]
+            .apply(
+                lambda x: (
+                    "\\textbf{"
+                    + x
+                    + "}"
+                    if abs(float(x)) >= 0.5
+                    else x
+                )
+            )
+        )
+
+        latex = significant.to_latex(
+
+            index=False,
+
+            escape=False,
+
+            column_format="lllcc",
+
+            caption=(
+                "Statistically significant performance "
+                "differences between the segment-wise "
+                "and group-wise validation protocols "
+                "after Bonferroni correction."
+            ),
+
+            label="tab:leakage-significant"
+
+        )
+
+        outfile = (
+            self.output_tables /
+            "leakage_significant.tex"
+        )
+
+        outfile.write_text(
+            latex,
+            encoding="utf8"
+        )
+
+        print(
+            "✓ leakage_significant.tex generated"
+        )
+
+        return significant

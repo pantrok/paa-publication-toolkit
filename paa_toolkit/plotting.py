@@ -29,36 +29,23 @@ class SpringerStyle:
     """
 
     # Figure sizes (inches)
-
     SINGLE_COLUMN = (3.35, 2.70)
-
     DOUBLE_COLUMN = (6.90, 3.60)
-
     DPI = 600
-
     CMAP = "viridis"
-
     FONT_FAMILY = "DejaVu Sans"
-
     TITLE_SIZE = 9
-
-    LABEL_SIZE = 8
-
-    TICK_SIZE = 7
-
     VALUE_SIZE = 7
-
-    COLORBAR_SIZE = 7
-
     GRID_COLOR = "white"
-
     GRID_WIDTH = 0.8
-
-    VALUE_FORMAT = "{:.3f}"
-
+    VALUE_FORMAT = "{:.2f}"
     ACCURACY_LIMITS = (0.90, 1.00)
-
     KAPPA_LIMITS = (0.80, 1.00)
+    LABEL_SIZE = 10
+    TICK_SIZE = 10
+    ANNOTATION_SIZE = 9
+    COLORBAR_SIZE = 10
+    AXIS_LABEL_SIZE = 11
 
 
 STYLE = SpringerStyle()
@@ -69,17 +56,11 @@ STYLE = SpringerStyle()
 # ---------------------------------------------------------------------
 
 CLASSIFIER_NAMES = {
-
     "RandomForest": "RF",
-
     "SVM-lineal": "SVM-Lin",
-
     "SVM-polinomial": "SVM-Poly",
-
     "SVM-RBF": "SVM-RBF",
-
     "MLP": "MLP",
-
     "kNN": "kNN"
 }
 
@@ -90,19 +71,12 @@ CLASSIFIER_NAMES = {
 def apply_style():
 
     plt.rcParams.update({
-
         "font.family": STYLE.FONT_FAMILY,
-
         "font.size": STYLE.TICK_SIZE,
-
         "axes.titlesize": STYLE.TITLE_SIZE,
-
         "axes.labelsize": STYLE.LABEL_SIZE,
-
         "xtick.labelsize": STYLE.TICK_SIZE,
-
         "ytick.labelsize": STYLE.TICK_SIZE,
-
         "figure.dpi": STYLE.DPI
     })
 
@@ -134,11 +108,8 @@ def save_figure(fig, folder, filename):
 
 
 def classifier_labels(columns):
-
     labels = []
-
     for c in columns:
-
         labels.append(
             CLASSIFIER_NAMES.get(c, c)
         )
@@ -147,31 +118,23 @@ def classifier_labels(columns):
 
 
 def build_matrix(df, metric):
-
     required = [
-
         "feature_set",
-
         "classifier",
-
         metric
     ]
 
     missing = [
-
         c for c in required
-
         if c not in df.columns
     ]
 
     if missing:
-
         raise ValueError(
             f"Missing columns: {missing}"
         )
 
     duplicated = df.duplicated(
-
         subset=[
             "feature_set",
             "classifier"
@@ -179,23 +142,16 @@ def build_matrix(df, metric):
     )
 
     if duplicated.any():
-
         raise ValueError(
             "Duplicated FeatureSet/Classifier pairs."
         )
 
     matrix = (
-
         df.pivot(
-
             index="feature_set",
-
             columns="classifier",
-
             values=metric
-
         )
-
         .sort_index()
 
     )
@@ -217,17 +173,12 @@ def draw_heatmap(
 ):
     """
     Draw a publication-quality heatmap.
-
     Parameters
     ----------
     matrix : pandas.DataFrame
-
     title : str
-
     colorbar_label : str
-
     limits : tuple(min,max)
-
     figsize : tuple
     """
 
@@ -239,16 +190,13 @@ def draw_heatmap(
     created_figure = False
 
     if ax is None:
-
         if figsize is None:
             figsize = STYLE.DOUBLE_COLUMN
-
         fig, ax = plt.subplots(figsize=figsize)
 
         created_figure = True
 
     else:
-
         fig = ax.figure
 
     cmap = plt.get_cmap(STYLE.CMAP)
@@ -290,7 +238,11 @@ def draw_heatmap(
 
     ax.set_xlabel("Classifier")
     ax.set_ylabel("Feature Set")
-    ax.set_title(title)
+    if title:
+        ax.set_title(
+            title,
+            fontsize=STYLE.TITLE_SIZE
+        )
 
     # --------------------------------------------------
     # Cell values
@@ -299,14 +251,10 @@ def draw_heatmap(
     best_value = np.nanmax(matrix.values)
 
     for i in range(matrix.shape[0]):
-
         for j in range(matrix.shape[1]):
-
             value = matrix.iloc[i, j]
-
             if np.isnan(value):
                 continue
-
             color = "white"
 
             if norm(value) < 0.45:
@@ -314,10 +262,14 @@ def draw_heatmap(
 
             text = STYLE.VALUE_FORMAT.format(value)
 
-            weight = "normal"
-
-            if value == best_value:
-                weight = "bold"
+            weight = (
+                "bold"
+                if np.isclose(
+                    value,
+                    matrix.values.max()
+                )
+                else "normal"
+            )
 
             ax.text(
                 j + 0.5,
@@ -325,9 +277,9 @@ def draw_heatmap(
                 text,
                 ha="center",
                 va="center",
-                fontsize=STYLE.VALUE_SIZE,
-                color=color,
-                weight=weight
+                fontsize=STYLE.ANNOTATION_SIZE,
+                fontweight=weight,
+                color=color
             )
 
     # --------------------------------------------------
@@ -338,25 +290,6 @@ def draw_heatmap(
         matrix.values == best_value
     )[0]
 
-    ax.add_patch(
-
-        Rectangle(
-
-            (col, row),
-
-            1,
-
-            1,
-
-            fill=False,
-
-            edgecolor="red",
-
-            linewidth=2
-
-        )
-
-    )
 
     if show_colorbar:
         cbar = fig.colorbar(
@@ -410,7 +343,7 @@ def plot_accuracy_heatmap(
 
     fig, _ = draw_heatmap(
         matrix=matrix,
-        title="Classification Accuracy",
+        title="",
         colorbar_label="Accuracy",
         limits=STYLE.ACCURACY_LIMITS
     )
@@ -451,7 +384,7 @@ def plot_kappa_heatmap(
 
     fig, _ = draw_heatmap(
         matrix=matrix,
-        title="Cohen's Kappa",
+        title="",
         colorbar_label="Kappa",
         limits=STYLE.KAPPA_LIMITS
     )
